@@ -1,0 +1,151 @@
+(ns ajure.core
+  (:require [aleph.http :as http]
+            [ajure.specs]
+            [clojure.spec.alpha :as s]
+            [expound.alpha :as expound]
+            [ajure.protocols :refer :all]
+            [ajure.handlers :refer :all]
+            [ajure.helpers :refer :all]
+            [cheshire.core :as json]
+            [byte-streams :as bs]
+            [clojure.string :as str]))
+
+(defn req
+  ([sym args output-spec method url call] (req sym args output-spec method url call {200 default-return-result}))
+  ([sym args output-spec method url call errors] (req sym args output-spec method url call errors nil))
+  ([sym args output-spec method url call errors _params]
+   (prn (str "CALL: " (-> method name str/upper-case) call))
+   (let [arglists (map rest (:arglists (meta sym)))
+         arglist (first (filter #(= (count %) (count args)) arglists))
+         invalid-inputs (remove spec-valid? (zipmap arglist args))]
+     (if (empty? invalid-inputs)
+       (let [params (cond-> {:method method :url (str url call) :throw-exceptions? false}
+                            (not (nil? _params)) (merge _params))
+             rq @(http/request params)
+             ;_ (clojure.pprint/pprint rq)
+             ;_ (clojure.pprint/pprint (-> rq :body bs/to-string))
+             [code body] (get-code-and-body-from-request rq)
+             ;_ (prn [code body])
+             handler (get errors code)]
+         (cond
+           (nil? handler) {:error {:type :unknown :message (str "Unknown error status " code)}}
+           (fn? handler) (handler code body)
+           (and (map? handler) (contains? handler :error)) handler
+           (not (s/valid? output-spec body)) {:error {:type :malformed-output :message (expound/expound-str output-spec body)}}
+           :else handler))
+       {:error {:type :malformed-input
+                :message (spec-explain (first invalid-inputs))}}))))
+
+;(defrecord Request [])
+
+(defrecord ArangodbApi [url]
+  IArangodbApi
+  (create-database [this db]
+    (req #'create-database [db] map? :post url "/_api/database"
+         {201 default-return-result}
+         {:form-params {:name db} :content-type :json}))
+  (create-database [this db users]
+    (req #'create-database [db users] map? :post url "/_api/database"
+         {201 default-return-result}
+         {:form-params {:name db :users users} :content-type :json}))
+
+  (get-current-database [this] (req #'get-current-database [] map? :get url "/_api/database/current"))
+  (get-accessible-databases [this] (req #'get-accessible-databases [] map? :get url "/_api/database/user"))
+  (get-all-databases [this] (req #'get-all-databases [] map? :get url "/_api/database"))
+  (remove-database [this db] (req #'remove-database [db] map? :delete url (str "/_api/database/" db)
+                                  {200 default-return-result
+                                   400 (bad-request "Request is malformed")
+                                   403 (forbidden "Request was not executed in the _system database")
+                                   404 (not-found (str "Database '" db "' not exists"))}))
+
+  (create-collection [this db create-coll-options]
+    (req #'create-collection [db create-coll-options] map? :post url (str "/_db/" db "/_api/collection")
+         {200 body-json-success}
+         {:body (json/generate-string create-coll-options)}))
+
+  (get-collection [this db coll-name]
+    (req #'get-collection [db coll-name] map? :get url (str "/_db/" db "/_api/collection/" coll-name)
+         {200 body-json-success
+          404 (not-found (str "Collection '" coll-name "' is unknown"))}))
+  (get-collection-properties [this db coll-name]
+    (req #'get-collection-properties [db coll-name] map? :get url (str "/_db/" db "/_api/collection/" coll-name "/properties")
+         {200 body-json-success
+          404 (not-found (str "Collection '" coll-name "' is unknown"))
+          400 (bad-request "Collection name is missing")}))
+  (get-collections [this db]
+    (req #'get-collections [db] map? :get url (str "/_db/" db "/_api/collection")))
+  (remove-collection [this db coll-name delete-coll-options]
+    (req #'remove-collection [db coll-name] map? :delete url (str "/_db/" db "/_api/collection/" coll-name)
+         {200 body-json-success
+          400 (bad-request "Collection name is missing")
+          404 (not-found (str "Collection '" coll-name "' is unknown"))}))
+  (get-document [this db handle]
+    (req #'get-document [db handle] map? :get url (str "/_db/" db "/_api/document/" handle)
+         {200 body-json-success
+          404 (not-found (str "Document '" handle "' not found"))}))
+  (get-document [this db handle rev strategy]
+    ; TODO add error codes handlers
+    (req #'get-document [db handle rev strategy] map? :get url (str "/_db/" db "/_api/document/" handle)
+         {200 body-json-success
+          404 (not-found (str "Document '" handle "' not found"))}
+         {:headers
+         (case strategy
+           :if-none-match {"If-None-Match" rev}
+           :if-match {"If-Match" rev}
+           {})}))
+  (exist-document? [this db handle]
+    (req #'exist-document? [db handle] nil? :head url (str "/_db/" db "/_api/document/" handle)
+         {200 {:success true}
+          404 {:success false}}))
+  (exist-document? [this db handle rev strategy]
+    ; TODO add error codes handlers
+    (req #'exist-document? [db handle rev strategy] nil? :head url (str "/_db/" db "/_api/document/" handle)
+         {200 {:success true}
+          404 {:success false}}
+         {:headers
+         (case strategy
+           :if-none-match {"If-None-Match" rev}
+           :if-match {"If-Match" rev}
+           {})}))
+  (create-document [this db coll-name document create-doc-options]
+    (req #'create-document [db coll-name document create-doc-options] map? :post url (str "/_db/" db "/_api/document/" coll-name)
+         {201 body-json-success
+          202 body-json-success
+          404 body-json-error
+          400 body-json-error
+          409 body-json-error}
+         {:body (json/generate-string document)
+          :query-params create-doc-options}))
+  (remove-document [this db handle remove-doc-options]
+    (req #'remove-document [db handle remove-doc-options] map? :delete url (str "/_db/" db "/_api/document/" handle)
+         {200 body-json-success
+          202 body-json-success
+          404 body-json-error}))
+  (remove-document [this db handle rev remove-doc-options]
+    (req #'remove-document [db handle rev remove-doc-options] map? :delete url (str "/_db/" db "/_api/document/" handle)
+         {200 body-json-success
+          202 body-json-success
+          404 body-json-error
+          412 body-json-error}
+         {:headers {"If-Match" rev}}))
+  (import-documents [this db docs import-docs-options]
+    ;(prn (json/generate-string docs))
+    (req #'import-documents [db docs import-docs-options] map? :post url (str "/_db/" db "/_api/import")
+         {201 body-json-success
+          400 body-json-error
+          404 body-json-error
+          409 body-json-error
+          500 (server-error )}
+         {:query-params import-docs-options
+          :body (json/generate-string docs)}))
+  (create-cursor [this db query+args cursor-params]
+    (req #'create-cursor [db query+args cursor-params] map? :post url (str "/_db/" db "/_api/cursor")
+         {201 default-return-result
+          400 body-json-error}
+         {:body (json/generate-string
+                  (merge cursor-params {:query (:query query+args) :bindVars (:args query+args)}))}))
+  (batch [this db reqs]
+    (req #'batch [db reqs] map? :post url (str "/_db/" db "/_api/batch")
+         {200 batch-parse-result}
+         {:multipart (map-indexed #(hash-map :name (str "req" %1) :content %2
+                                             :mime-type "application/x-arango-batchpart") reqs)})))

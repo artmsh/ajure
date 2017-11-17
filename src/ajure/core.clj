@@ -8,9 +8,13 @@
             [ajure.helpers :refer :all]
             [cheshire.core :as json]
             [byte-streams :as bs]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [ajure.requests :as reqs]))
 
 (defn req
+  ([{:keys [http-method url protocol-method output-spec responses http-params]} endpoint db args]
+   (let [_url (if db (str url "/_db/" db) url)]
+    (req protocol-method args output-spec http-method endpoint _url responses http-params)))
   ([sym args output-spec method url call] (req sym args output-spec method url call {200 default-return-result}))
   ([sym args output-spec method url call errors] (req sym args output-spec method url call errors nil))
   ([sym args output-spec method url call errors _params]
@@ -29,27 +33,31 @@
              handler (get errors code)]
          (cond
            (nil? handler) {:error {:type :unknown :message (str "Unknown error status " code)}}
-           (fn? handler) (handler code body)
+           (fn? handler) (handler code body (:headers rq))
            (and (map? handler) (contains? handler :error)) handler
            (not (s/valid? output-spec body)) {:error {:type :malformed-output :message (expound/expound-str output-spec body)}}
            :else handler))
        {:error {:type :malformed-input
                 :message (spec-explain (first invalid-inputs))}}))))
 
-;(defrecord Request [])
+(defn as-http-content [req]
+  (let [headers (get-in req [:http-params :headers])
+        qs (get-in req [:http-params :query-params])
+        body (get-in req [:http-params :body])
+        url (cond-> (:url req) (not (nil? qs)) (str "?" (str/join "&" (map #(str (key %) "=" (val %)) qs))))
+        method (-> req :http-method name str/upper-case)]
+    (cond-> ""
+            (not (nil? headers)) (str (str/join "\n" (map #(str (key %) ": " (val %)) headers)) "\n")
+            true (str method " " url " HTTP/1.1")
+            (not (nil? body)) (str "\n" body "\n"))))
 
 (defrecord ArangodbApi [url]
   IArangodbApi
-  (create-database [this db]
-    (req #'create-database [db] map? :post url "/_api/database"
-         {201 default-return-result}
-         {:form-params {:name db} :content-type :json}))
-  (create-database [this db users]
-    (req #'create-database [db users] map? :post url "/_api/database"
-         {201 default-return-result}
-         {:form-params {:name db :users users} :content-type :json}))
-
+  (create-database [this db] (req (reqs/create-database db) url nil [db]))
+  (create-database [this db users] (req (reqs/create-database db users) url nil [db users]))
   (get-current-database [this] (req #'get-current-database [] map? :get url "/_api/database/current"))
+
+
   (get-accessible-databases [this] (req #'get-accessible-databases [] map? :get url "/_api/database/user"))
   (get-all-databases [this] (req #'get-all-databases [] map? :get url "/_api/database"))
   (remove-database [this db] (req #'remove-database [db] map? :delete url (str "/_api/database/" db)
@@ -94,9 +102,7 @@
            :if-match {"If-Match" rev}
            {})}))
   (exist-document? [this db handle]
-    (req #'exist-document? [db handle] nil? :head url (str "/_db/" db "/_api/document/" handle)
-         {200 {:success true}
-          404 {:success false}}))
+    (req (reqs/exist-document? handle) url db [db handle]))
   (exist-document? [this db handle rev strategy]
     ; TODO add error codes handlers
     (req #'exist-document? [db handle rev strategy] nil? :head url (str "/_db/" db "/_api/document/" handle)
@@ -129,7 +135,6 @@
           412 body-json-error}
          {:headers {"If-Match" rev}}))
   (import-documents [this db docs import-docs-options]
-    ;(prn (json/generate-string docs))
     (req #'import-documents [db docs import-docs-options] map? :post url (str "/_db/" db "/_api/import")
          {201 body-json-success
           400 body-json-error
@@ -146,6 +151,7 @@
                   (merge cursor-params {:query (:query query+args) :bindVars (:args query+args)}))}))
   (batch [this db reqs]
     (req #'batch [db reqs] map? :post url (str "/_db/" db "/_api/batch")
-         {200 batch-parse-result}
-         {:multipart (map-indexed #(hash-map :name (str "req" %1) :content %2
-                                             :mime-type "application/x-arango-batchpart") reqs)})))
+         {200 (partial batch-parse-result reqs)}
+         {:multipart (map-indexed #(hash-map :name (str "req" %1) :content (as-http-content %2)
+                                             :mime-type "application/x-arango-batchpart") reqs)}))
+  (get-api-version [this] (req (reqs/get-api-version) url nil [])))

@@ -27,7 +27,7 @@
 
   (create-cursor [this db query+args cursor-params])
   (batch [this db reqs])
-  )
+  (get-api-version [this]))
 
 (defprotocol IArangodbSimpleApi
   (get-all-document-keys [this db collection] [this db collection type]))

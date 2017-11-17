@@ -5,9 +5,10 @@
             [ajure.pull :refer :all]
             [clj-aql.core :refer :all]
             [clojure.spec.alpha :as s]
-            [expound.alpha :as expound])
-  (:import (ajure ArangodbApi)
-           (ajure ArangodbPullApi)))
+            [expound.alpha :as expound]
+            [ajure.requests :as reqs])
+  (:import (ajure.core ArangodbApi)
+           (ajure.pull ArangodbPullApi)))
 
 (def api (ArangodbApi. "http://arangodb.tom.dev"))
 (def pull-api (ArangodbPullApi. api))
@@ -21,7 +22,6 @@
 
 
 (deftest db-test
-
   (testing "Getting current database"
     (let [res (get-current-database api)]
       (is (= "_system" (get-in res [:success "name"])))))
@@ -95,8 +95,7 @@
   (testing "Batch API"
     (get-document api "tom" "location/t1p")
     (get-collections api "tom")
-    (prn (batch api "tom" ["GET /_api/version HTTP/1.1" "GET /_api/document/location/t1p HTTP/1.1"]))
-    ;(batch api "tom" [(get-version) (get-document "location/t1p")])
-
+    (prn (batch api "tom" [(reqs/get-api-version)
+                           (reqs/get-document "location/t1p")]))
     )
   )

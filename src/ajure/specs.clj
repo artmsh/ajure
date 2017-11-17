@@ -57,4 +57,4 @@
 (s/def ::ttl int?)
 (s/def ::options (s/map-of string? any?))
 (s/def ::cursor-params (s/keys :opt-un [::count ::batchSize ::cache ::memoryLimit ::ttl ::options]))
-(s/def ::reqs (s/coll-of string?))
+(s/def ::reqs (s/coll-of record?))

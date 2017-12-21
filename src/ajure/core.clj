@@ -13,12 +13,12 @@
 
 (defn req
   ([{:keys [http-method url protocol-method output-spec responses http-params]} endpoint db args]
-   (let [_url (if db (str url "/_db/" db) url)]
+   (let [_url (if db (str "/_db/" db url) url)]
     (req protocol-method args output-spec http-method endpoint _url responses http-params)))
   ([sym args output-spec method url call] (req sym args output-spec method url call {200 default-return-result}))
   ([sym args output-spec method url call errors] (req sym args output-spec method url call errors nil))
   ([sym args output-spec method url call errors _params]
-   (prn (str "CALL: " (-> method name str/upper-case) call))
+   ;(prn (str "CALL: " (-> method name str/upper-case) call))
    (let [arglists (map rest (:arglists (meta sym)))
          arglist (first (filter #(= (count %) (count args)) arglists))
          invalid-inputs (remove spec-valid? (zipmap arglist args))]
@@ -31,12 +31,7 @@
              [code body] (get-code-and-body-from-request rq)
              ;_ (prn [code body])
              handler (get errors code)]
-         (cond
-           (nil? handler) {:error {:type :unknown :message (str "Unknown error status " code)}}
-           (fn? handler) (handler code body (:headers rq))
-           (and (map? handler) (contains? handler :error)) handler
-           (not (s/valid? output-spec body)) {:error {:type :malformed-output :message (expound/expound-str output-spec body)}}
-           :else handler))
+         (handle-response handler code body (:headers rq) output-spec))
        {:error {:type :malformed-input
                 :message (spec-explain (first invalid-inputs))}}))))
 

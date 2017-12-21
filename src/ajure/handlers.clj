@@ -1,12 +1,22 @@
 (ns ajure.handlers
   (:require [cheshire.core :as json]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [expound.alpha :as expound]
+            [clojure.spec.alpha :as s]))
 
 (defn default-return-result [_ body _]
   {:success (get (json/parse-string body) "result")})
 
 (defn get-boundary [content-type]
   (second (first (re-seq #"boundary=([0-9a-z]+)" content-type))))
+
+(defn handle-response [handler status body headers output-spec]
+  (cond
+    (nil? handler) {:error {:type :unknown :message (str "Unknown error status " status)}}
+    (fn? handler) (handler status body headers)
+    (and (map? handler) (contains? handler :error)) handler
+    (not (s/valid? output-spec body)) {:error {:type :malformed-output :message (expound/expound-str output-spec body)}}
+    :else handler))
 
 (defn get-status-headers-body [req lines]
   (let [status-line (nth lines 3)
@@ -19,7 +29,7 @@
         body (second body-lines)
         headers (into {} (map #(str/split % #": " 2) header-lines))
         handler (get-in req [:responses status])]
-    (handler status body headers)))
+    (handle-response handler status body headers (:output-spec req))))
 
 (defn batch-parse-result [reqs _ body headers]
   (let [boundary (str "--" (get-boundary (get headers "content-type")))

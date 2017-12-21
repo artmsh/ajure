@@ -39,12 +39,13 @@
           gcp-test-coll (get-collection-properties api "testdb" "test_collection")
           ed-1 (exist-document? api "testdb" "test_collection/1")
           gd-0 (get-document api "testdb" "test_collection/0")
+          uds-0 (update-documents api "testdb" "test_collection" [{:_key "0" :a 2}] {})
           rd-0 (remove-document api "testdb" "test_collection/0" {})
           rc-test-coll (remove-collection api "testdb" "test_collection" {})
           rd-testdb (remove-database api "testdb")
           dbs-after (get-all-databases api)
           ]
-      (is (= true (:success cd-testdb)))
+      (is (= {:success true} cd-testdb))
       (is (is-eq-map?
             {"name" "test_collection" "waitForSync" false "isSystem" false "isVolatile" false "status" 3 "type" 2}
             cc-test-coll))
@@ -57,7 +58,7 @@
       (is (is-eq-map?
             {"name" "test_collection" "isSystem" false "status" 3 "type" 2}
             gc-test-coll))
-      (is (= true (:success ed-0)))
+      (is (= {:success true} ed-0))
       (is (is-eq-map?
             {"error" false "created" 1 "errors" 0 "empty" 0 "updated" 1 "ignored" 0}
             id-1-0))
@@ -71,10 +72,12 @@
              "status" 3
              "type" 2}
             gcp-test-coll))
-      (is (= true (:success ed-1)))
+      (is (= {:success true} ed-1))
       (is (is-eq-map?
             {"_id" "test_collection/0" "_key" "0" "a" 3 "b" 2}
             gd-0))
+      (is (= {:success (list {"_id" "test_collection/0" "_key" "0"})}
+             (update uds-0 :success #(map (fn [d] (select-keys d #{"_id" "_key"})) %))))
       (is (is-eq-map?
             {"_id" "test_collection/0" "_key" "0"}
             rd-0))
@@ -82,8 +85,7 @@
             {"id" (get-in cc-test-coll [:success "id"]) "error" false}
             rc-test-coll))
       (is (= true (:success rd-testdb)))
-      (is (= dbs-before dbs-after))
-      ))
+      (is (= dbs-before dbs-after))))
 
   (testing "AQL Queries"
     (prn (create-cursor api "tom" (FOR [l] :IN "location" (RETURN l)) {}))

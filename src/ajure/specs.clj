@@ -1,5 +1,6 @@
 (ns ajure.specs
-  (:require [clojure.spec.alpha :as s]))
+  (:require [clojure.spec.alpha :as s]
+            [ajure.constants :as constants]))
 
 (s/def ::db string?)
 (s/def ::coll-name string?)
@@ -36,6 +37,8 @@
                    ::numberOfShards ::isSystem :create-coll-options/type ::indexBuckets]))
 (s/def ::delete-coll-options (s/keys :opt-un [::isSystem]))
 
+(s/def ::strategy constants/document-fetching-strategies)
+
 (s/def :import-docs-options/type #{"documents" "auto" "list"})
 (s/def :import-docs-options/collection string?)
 (s/def ::fromPrefix string?)
@@ -46,6 +49,8 @@
 (s/def ::details string?)
 (s/def ::import-docs-options (s/keys :req-un [:import-docs-options/type :import-docs-options/collection]
                                      :opt-un [::fromPrefix ::toPrefix ::overwrite ::waitForSync ::onDuplicate ::complete ::details]))
+
+(s/def ::collection string?)
 
 (s/def ::keepNull boolean?)
 (s/def ::mergeObjects boolean?)

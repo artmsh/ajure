@@ -17,7 +17,7 @@
   ;(replace-document [this db handle document options] [this db handle document rev options])
   ;(replace-documents [this db collection documents options])
   ;(update-document [this db handle document options] [this db handle document rev options])
-  (update-documents [this db collection documents update-docs-options])
+  (update-documents [this db collection docs update-docs-options])
   (remove-document [this db handle remove-doc-options] [this db handle rev remove-doc-options])
   ;(remove-documents [this db collection array options])
   ;(import-document-values [this db documents options])

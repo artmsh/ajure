@@ -154,4 +154,6 @@
          {200 (partial batch-parse-result reqs)}
          {:multipart (map-indexed #(hash-map :name (str "req" %1) :content (as-http-content %2)
                                              :mime-type "application/x-arango-batchpart") reqs)}))
-  (get-api-version [this] (req (reqs/get-api-version) url nil [])))
+  (get-api-version [this] (req (reqs/get-api-version) url nil []))
+  (update-documents [this db collection documents update-docs-options]
+    (req (reqs/update-documents collection documents) url db [db collection documents update-docs-options])))

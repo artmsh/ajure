@@ -47,6 +47,13 @@
 (s/def ::import-docs-options (s/keys :req-un [:import-docs-options/type :import-docs-options/collection]
                                      :opt-un [::fromPrefix ::toPrefix ::overwrite ::waitForSync ::onDuplicate ::complete ::details]))
 
+(s/def ::keepNull boolean?)
+(s/def ::mergeObjects boolean?)
+(s/def ::ignoreRevs boolean?)
+(s/def ::returnOld boolean?)
+
+(s/def ::update-docs-options (s/keys :opt-un [::keepNull ::mergeObjects ::waitForSync ::ignoreRevs ::returnOld ::returnNew]))
+
 (s/def ::query string?)
 (s/def ::args (s/map-of string? any?))
 (s/def ::query+args (s/keys :req-un [::query ::args]))

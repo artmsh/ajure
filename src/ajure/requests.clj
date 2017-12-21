@@ -1,6 +1,7 @@
 (ns ajure.requests
   (:require [ajure.protocols :as proto]
-            [ajure.handlers :refer :all]))
+            [ajure.handlers :refer :all]
+            [cheshire.core :as json]))
 
 (defrecord Request [http-method url protocol-method output-spec responses http-params])
 
@@ -26,3 +27,12 @@
 
 (defn get-api-version []
   (->Request :get "/_api/version" #'get-api-version map? {200 body-json-success} nil))
+
+(defn update-documents
+  [collection documents]
+  (->Request :patch (str "/_api/document/" collection) #'update-documents map?
+             {201 body-json-success
+              202 body-json-success
+              400 body-json-error
+              404 body-json-error}
+             {:body (json/generate-string documents)}))

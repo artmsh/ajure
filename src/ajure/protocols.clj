@@ -14,7 +14,7 @@
   (get-document [this db handle] [this db handle rev strategy])
   (exist-document? [this db handle] [this db handle rev strategy])
   (create-document [this db coll-name doc-or-docs create-doc-options])
-  ;(replace-document [this db handle document options] [this db handle document rev options])
+  (replace-document [this db handle document replace-doc-options] [this db handle document rev replace-doc-options])
   ;(replace-documents [this db collection documents options])
   ;(update-document [this db handle document options] [this db handle document rev options])
   (update-documents [this db collection docs update-docs-options])

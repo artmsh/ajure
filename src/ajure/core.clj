@@ -147,8 +147,14 @@
   (batch [this db reqs]
     (req #'batch [db reqs] map? :post url (str "/_db/" db "/_api/batch")
          {200 (partial batch-parse-result reqs)}
-         {:multipart (map-indexed #(hash-map :name (str "req" %1) :content (as-http-content %2)
-                                             :mime-type "application/x-arango-batchpart") reqs)}))
+         {:multipart (map-indexed #(hash-map :name (str "req" %1)
+                                             :content (as-http-content %2)
+                                             :mime-type "application/x-arango-batchpart")
+                                  reqs)}))
   (get-api-version [this] (req (reqs/get-api-version) url nil []))
   (update-documents [this db collection documents update-docs-options]
-    (req (reqs/update-documents collection documents) url db [db collection documents update-docs-options])))
+    (req (reqs/update-documents collection documents) url db [db collection documents update-docs-options]))
+  (replace-document [this db handle document replace-doc-options]
+    (req (reqs/replace-document handle document replace-doc-options) url db [db handle document replace-doc-options]))
+  (replace-document [this db handle document rev replace-doc-options]
+    (req (reqs/replace-document handle document rev replace-doc-options) url db [db handle document rev replace-doc-options])))

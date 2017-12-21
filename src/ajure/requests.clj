@@ -37,3 +37,21 @@
               404 body-json-error}
              {:body (json/generate-string documents)}))
 
+(defn replace-document
+  ([handle document replace-doc-options] (->Request :put (str "/_api/document/" handle) #'proto/replace-document map?
+                                                    {201 body-json-success
+                                                     202 body-json-success
+                                                     400 body-json-error
+                                                     404 body-json-error}
+                                                    {:query-params replace-doc-options
+                                                     :body (json/generate-string document)}
+                                                    ))
+  ([handle document rev replace-doc-options] (->Request :put (str "/_api/document/" handle) #'proto/replace-document map?
+                                                        {201 body-json-success
+                                                         202 body-json-success
+                                                         400 body-json-error
+                                                         404 body-json-error
+                                                         412 body-json-error}
+                                                        {:query-params replace-doc-options
+                                                         :body (json/generate-string document)
+                                                         :headers {"If-Match" rev}})))

@@ -96,7 +96,10 @@
 
   (testing "Pull API"
     (prn (pull pull-api '[:body/id :body/barcode :attributes/_body_id
-                          {:body/descriptions [:description/id :description/value]}] ["tom" "body/00073480000341"])))
+                          {:body/descriptions [:description/id :description/value]}] ["tom" "body/00073480000341"]))
+    (pull-many pull-api '[{:body/taxa [:taxon/taxon_id]}] (map #(vector "tom" (str "body/" %))
+                                                               #{"00050000836123" "00720473231588"})))
+
   (testing "Batch API"
     (get-document api "tom" "location/t1p")
     (get-collections api "tom")

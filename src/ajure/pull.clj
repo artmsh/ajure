@@ -134,7 +134,7 @@
 (defn build-query [tree handles]
   (let [str-handles (json/generate-string handles)
         aql (pattern->aql tree (list 'DOCUMENT (symbol str-handles)))
-        ;_ (clojure.pprint/pprint aql)
+        _ (clojure.pprint/pprint aql)
         exp (macroexpand aql)
         fn (:query exp)
         q (eval fn)

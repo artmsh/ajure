@@ -157,4 +157,7 @@
   (replace-document [this db handle document replace-doc-options]
     (req (reqs/replace-document handle document replace-doc-options) url db [db handle document replace-doc-options]))
   (replace-document [this db handle document rev replace-doc-options]
-    (req (reqs/replace-document handle document rev replace-doc-options) url db [db handle document rev replace-doc-options])))
+    (req (reqs/replace-document handle document rev replace-doc-options) url db [db handle document rev replace-doc-options]))
+  IArangodbSimpleApi
+  (get-by-keys [this db collection keys]
+    (req (reqs/get-by-keys collection keys) url db [db collection keys])))

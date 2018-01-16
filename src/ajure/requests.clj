@@ -1,7 +1,8 @@
 (ns ajure.requests
   (:require [ajure.protocols :as proto]
             [ajure.handlers :refer :all]
-            [cheshire.core :as json]))
+            [cheshire.core :as json]
+            [clojure.spec.alpha :as s]))
 
 (defrecord Request [http-method url protocol-method output-spec responses http-params])
 
@@ -18,8 +19,8 @@
                                                                                                                                                                                {})})))
 
 (defn exist-document?
-  ([handle]              (->Request :head (str "/_api/document/" handle) #'proto/exist-document? string? {200 {:success true} 404 {:success false}} nil))
-  ([handle rev strategy] (->Request :head (str "/_api/document/" handle) #'proto/exist-document? string? {200 {:success true} 404 {:success false}} {:headers
+  ([handle]              (->Request :head (str "/_api/document/" handle) #'proto/exist-document? (s/or :s string? :n nil?) {200 {:success true} 404 {:success false}} nil))
+  ([handle rev strategy] (->Request :head (str "/_api/document/" handle) #'proto/exist-document? (s/or :s string? :n nil?) {200 {:success true} 404 {:success false}} {:headers
                                                                                                                                              (case strategy
                                                                                                                                                :if-none-match {"If-None-Match" rev}
                                                                                                                                                :if-match {"If-Match" rev}
@@ -55,3 +56,10 @@
                                                         {:query-params replace-doc-options
                                                          :body (json/generate-string document)
                                                          :headers {"If-Match" rev}})))
+
+(defn get-by-keys [collection keys]
+  (->Request :put "/_api/simple/lookup-by-keys" #'proto/get-by-keys map?
+             {200 (comp #(update % :success (fn [r] (get r "documents"))) body-json-success)
+              404 body-json-error
+              405 body-json-error}
+             {:body (json/generate-string {:keys keys :collection collection})}))

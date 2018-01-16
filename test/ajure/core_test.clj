@@ -6,11 +6,12 @@
             [clj-aql.core :refer :all]
             [clojure.spec.alpha :as s]
             [expound.alpha :as expound]
-            [ajure.requests :as reqs])
+            [ajure.requests :as reqs]
+            [clojure.string :as str])
   (:import (ajure.core ArangodbApi)
            (ajure.pull ArangodbPullApi)))
 
-(def api (ArangodbApi. "http://arangodb.tom.dev"))
+(def api (ArangodbApi. "http://arangodb.tom.development"))
 (def pull-api (ArangodbPullApi. api))
 
 
@@ -34,6 +35,7 @@
           cd-0 (create-document api "testdb" "test_collection" {:_key "0" :a 1 :b 2} {})
           gc-test-coll (get-collection api "testdb" "test_collection")
           ed-0 (exist-document? api "testdb" "test_collection/0")
+          ed-1_ (exist-document? api "testdb" "test_collection/1")
           id-1-0 (import-documents api "testdb" [{:_key "1" :a 2 :c -1} {:_key "0" :a 3}]
                                    {:collection "test_collection" :type "list" :onDuplicate "update"})
           gcp-test-coll (get-collection-properties api "testdb" "test_collection")
@@ -59,6 +61,7 @@
             {"name" "test_collection" "isSystem" false "status" 3 "type" 2}
             gc-test-coll))
       (is (= {:success true} ed-0))
+      (is (= {:success false} ed-1_))
       (is (is-eq-map?
             {"error" false "created" 1 "errors" 0 "empty" 0 "updated" 1 "ignored" 0}
             id-1-0))
@@ -99,5 +102,9 @@
     (get-collections api "tom")
     (prn (batch api "tom" [(reqs/get-api-version)
                            (reqs/get-document "location/t1p")]))
-    )
-  )
+    (is (= (batch api "tom" [(reqs/exist-document? "location/t1p")
+                             (reqs/exist-document? "location/never-ever-exist")])
+           {:success [{:success true} {:success false}]})))
+
+  (testing "Simple API"
+    (prn (get-by-keys api "tom" "location" ["bfresh-allston"]))))

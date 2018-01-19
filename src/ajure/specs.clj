@@ -72,3 +72,7 @@
 (s/def ::cursor-params (s/keys :opt-un [::count ::batchSize ::cache ::memoryLimit ::ttl ::options]))
 (s/def ::reqs (s/coll-of record?))
 (s/def ::keys (s/coll-of string?))
+
+(s/def ::skip pos-int?)
+(s/def ::limit pos-int?)
+(s/def ::get-by-example-options (s/keys :opt-un [::skip ::limit]))

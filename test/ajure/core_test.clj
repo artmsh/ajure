@@ -110,4 +110,5 @@
            {:success [{:success true} {:success false}]})))
 
   (testing "Simple API"
-    (prn (get-by-keys api "tom" "location" ["bfresh-allston"]))))
+    (prn (get-by-keys api "tom" "location" ["bfresh-allston"]))
+    (prn (get-by-example api "tom" "attributes" {:location_id "bfresh-allston"} 50 {}))))

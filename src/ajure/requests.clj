@@ -63,3 +63,17 @@
               404 body-json-error
               405 body-json-error}
              {:body (json/generate-string {:keys keys :collection collection})}))
+
+(defn get-by-example [collection doc batchSize get-by-example-options]
+  (prn (merge {:batchSize batchSize
+               :collection collection
+               :example doc}
+              get-by-example-options))
+  (->Request :put "/_api/simple/by-example" #'proto/get-by-example map?
+             {201 body-json-success
+              400 body-json-error
+              404 body-json-error}
+             {:body (json/generate-string (merge {:batchSize batchSize
+                                                  :collection collection
+                                                  :example doc}
+                                                 get-by-example-options))}))

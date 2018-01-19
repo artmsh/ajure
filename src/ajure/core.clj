@@ -160,4 +160,6 @@
     (req (reqs/replace-document handle document rev replace-doc-options) url db [db handle document rev replace-doc-options]))
   IArangodbSimpleApi
   (get-by-keys [this db collection keys]
-    (req (reqs/get-by-keys collection keys) url db [db collection keys])))
+    (req (reqs/get-by-keys collection keys) url db [db collection keys]))
+  (get-by-example [this db collection doc batchSize get-by-example-options]
+    (req (reqs/get-by-example collection doc batchSize get-by-example-options) url db [collection doc batchSize get-by-example-options])))

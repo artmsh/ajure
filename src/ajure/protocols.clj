@@ -31,7 +31,8 @@
 
 (defprotocol IArangodbSimpleApi
   ;(get-all-document-keys [this db collection] [this db collection type])
-  (get-by-keys [this db collection keys]))
+  (get-by-keys [this db collection keys])
+  (get-by-example [this db collection doc batchSize get-by-example-options]))
 
 (defprotocol IPull
   (pull [this spec entity-ident])

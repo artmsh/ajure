@@ -1,0 +1,28 @@
+version: 2
+jobs:
+  test:
+    working_directory: ~/ajure
+    docker:
+      - image: circleci/clojure:lein-2.7.1
+      - image: arangodb:3.2.2
+    environment:
+      LEIN_ROOT: nbd
+      JVM_OPTS: -Xmx3200m
+    steps:
+      - checkout
+      - restore_cache:
+          key: ajure-{{ checksum "project.clj" }}
+      - run: lein deps
+      - save_cache:
+          paths:
+            - ~/.m2
+            - ~/.lein
+          key: ajure-{{ checksum "project.clj" }}
+      - run: sleep 5 && nc -vz localhost 8529
+      - store_test_results:
+          path: target/test-results
+workflows:
+  version: 2
+  default:
+    jobs:
+      - test

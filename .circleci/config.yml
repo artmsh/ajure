@@ -5,6 +5,8 @@ jobs:
     docker:
       - image: circleci/clojure:lein-2.7.1
       - image: arangodb:3.2.2
+        environment:
+          ARANGO_NO_AUTH: 1
     environment:
       LEIN_ROOT: nbd
       JVM_OPTS: -Xmx3200m

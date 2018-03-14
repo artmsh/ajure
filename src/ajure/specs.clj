@@ -59,6 +59,7 @@
 
 (s/def ::update-docs-options (s/keys :opt-un [::keepNull ::mergeObjects ::waitForSync ::ignoreRevs ::returnOld ::returnNew]))
 (s/def ::replace-doc-options (s/keys :opt-un [::waitForSync ::ignoreRevs ::returnOld ::returnNew ::silent]))
+(s/def ::document map?)
 
 (s/def ::query string?)
 (s/def ::args (s/map-of string? any?))

@@ -2,7 +2,9 @@
   (:require [ajure.protocols :as proto]
             [ajure.handlers :refer :all]
             [cheshire.core :as json]
-            [clojure.spec.alpha :as s]))
+            [clojure.spec.alpha :as s]
+            [clojure.edn :as edn]
+            [clojure.string :as str]))
 
 (defrecord Request [http-method url protocol-method output-spec responses http-params])
 
@@ -11,8 +13,10 @@
   ([db users] (->Request :post "/_api/database" #'proto/create-database map? {201 default-return-result} {:form-params {:name db :users users} :content-type :json})))
 
 (defn get-document
-  ([handle]              (->Request :get (str "/_api/document/" handle) #'proto/get-document map? {200 body-json-success 404 (not-found (str "Document '" handle "' not found"))} nil))
-  ([handle rev strategy] (->Request :get (str "/_api/document/" handle) #'proto/get-document map? {200 body-json-success 404 (not-found (str "Document '" handle "' not found"))} {:headers
+  ([handle]              (->Request :get (str "/_api/document/" handle) #'proto/get-document map? {200 body-json-success
+                                                                                                   404 body-json-error #_(not-found (str "Document '" handle "' not found"))} nil))
+  ([handle rev strategy] (->Request :get (str "/_api/document/" handle) #'proto/get-document map? {200 body-json-success
+                                                                                                   404 body-json-error #_(not-found (str "Document '" handle "' not found"))} {:headers
                                                                                                                                                                              (case strategy
                                                                                                                                                                                :if-none-match {"If-None-Match" rev}
                                                                                                                                                                                :if-match {"If-Match" rev}
@@ -77,3 +81,25 @@
                                                   :collection collection
                                                   :example doc}
                                                  get-by-example-options))}))
+
+(defn get-next-cursor-batch [cursor-id]
+  (->Request :put (str "/_api/cursor/" cursor-id) #'proto/get-next-cursor-batch map?
+             {200 body-json-success
+              400 body-json-error
+              404 body-json-error}
+             {}))
+
+(defn body-json-replication-success [status body headers]
+  {:success (map json/parse-string (str/split-lines body))
+   :check-more    (edn/read-string (get headers "x-arango-replication-checkmore"))
+   :last-included (edn/read-string (get headers "x-arango-replication-lastincluded"))})
+
+(defn get-replication-dump [collection replication-dump-options]
+  (->Request :get "/_api/replication/dump" #'proto/get-replication-dump map?
+             {200 body-json-replication-success
+              204 body-json-replication-success
+              400 body-json-error
+              404 body-json-error
+              405 body-json-error
+              500 body-json-error}
+             {:query-params (merge {:collection collection} replication-dump-options)}))

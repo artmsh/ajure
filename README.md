@@ -23,7 +23,7 @@ Tested with ArangoDB version 3.2.2.
 
 ## License
 
-Copyright © 2017 Artem Mishchenko
+Copyright © 2017-2018 Artem Mishchenko
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.

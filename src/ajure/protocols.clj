@@ -23,11 +23,12 @@
   ;(import-document-values [this db documents options])
   (import-documents [this db docs import-docs-options])
   ;(get-replication-inventory [this db options])
-  ;(get-replication-dump [this db options]))
+  (get-replication-dump [this db collection replication-dump-options])
 
   (create-cursor [this db query+args cursor-params])
   (batch [this db reqs])
-  (get-api-version [this]))
+  (get-api-version [this])
+  (get-next-cursor-batch [this cursor-id]))
 
 (defprotocol IArangodbSimpleApi
   ;(get-all-document-keys [this db collection] [this db collection type])

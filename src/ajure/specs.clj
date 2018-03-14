@@ -76,3 +76,14 @@
 (s/def ::skip pos-int?)
 (s/def ::limit pos-int?)
 (s/def ::get-by-example-options (s/keys :opt-un [::skip ::limit]))
+
+(s/def ::cursor-id string?)
+
+(s/def ::from nat-int?)
+(s/def ::to nat-int?)
+(s/def ::chunkSize pos-int?)
+(s/def ::includeSystem boolean?)
+(s/def ::failOnUnknown boolean?)
+(s/def ::ticks boolean?)
+(s/def ::flush boolean?)
+(s/def ::replication-dump-options (s/keys :opt-un [::from ::to ::chunkSize ::includeSystem ::failOnUnknown ::ticks ::flush]))

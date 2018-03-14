@@ -83,9 +83,7 @@
           400 (bad-request "Collection name is missing")
           404 (not-found (str "Collection '" coll-name "' is unknown"))}))
   (get-document [this db handle]
-    (req #'get-document [db handle] map? :get url (str "/_db/" db "/_api/document/" handle)
-         {200 body-json-success
-          404 (not-found (str "Document '" handle "' not found"))}))
+    (req (reqs/get-document handle) url db [db handle]))
   (get-document [this db handle rev strategy]
     ; TODO add error codes handlers
     (req #'get-document [db handle rev strategy] map? :get url (str "/_db/" db "/_api/document/" handle)
@@ -138,19 +136,26 @@
           500 (server-error )}
          {:query-params import-docs-options
           :body (json/generate-string docs)}))
+  (get-replication-dump [this db collection replication-dump-options]
+    (req (reqs/get-replication-dump collection replication-dump-options) url db [db collection replication-dump-options]))
   (create-cursor [this db query+args cursor-params]
     (req #'create-cursor [db query+args cursor-params] map? :post url (str "/_db/" db "/_api/cursor")
-         {201 default-return-result
+         {201 body-json-success
           400 body-json-error}
          {:body (json/generate-string
                   (merge cursor-params {:query (:query query+args) :bindVars (:args query+args)}))}))
   (batch [this db reqs]
-    (req #'batch [db reqs] map? :post url (str "/_db/" db "/_api/batch")
-         {200 (partial batch-parse-result reqs)}
-         {:multipart (map-indexed #(hash-map :name (str "req" %1)
-                                             :content (as-http-content %2)
-                                             :mime-type "application/x-arango-batchpart")
-                                  reqs)}))
+    (let [mp (map-indexed #(hash-map :name (str "req" %1)
+                                     :content (as-http-content %2)
+                                     :mime-type "application/x-arango-batchpart")
+                          reqs)]
+      ;(prn "mp" mp)
+      (req #'batch [db reqs] map? :post url (str "/_db/" db "/_api/batch")
+           {200 (partial batch-parse-result reqs)}
+           {:multipart (map-indexed #(hash-map :name (str "req" %1)
+                                               :content (as-http-content %2)
+                                               :mime-type "application/x-arango-batchpart")
+                                    reqs)})))
   (get-api-version [this] (req (reqs/get-api-version) url nil []))
   (update-documents [this db collection documents update-docs-options]
     (req (reqs/update-documents collection documents) url db [db collection documents update-docs-options]))
@@ -158,6 +163,8 @@
     (req (reqs/replace-document handle document replace-doc-options) url db [db handle document replace-doc-options]))
   (replace-document [this db handle document rev replace-doc-options]
     (req (reqs/replace-document handle document rev replace-doc-options) url db [db handle document rev replace-doc-options]))
+  (get-next-cursor-batch [this cursor-id]
+    (req (reqs/get-next-cursor-batch cursor-id) url nil [cursor-id]))
   IArangodbSimpleApi
   (get-by-keys [this db collection keys]
     (req (reqs/get-by-keys collection keys) url db [db collection keys]))

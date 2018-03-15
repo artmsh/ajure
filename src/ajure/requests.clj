@@ -90,7 +90,9 @@
              {}))
 
 (defn body-json-replication-success [status body headers]
-  {:success (map json/parse-string (str/split-lines body))
+  {:success (if (str/blank? body)
+              []
+              (map json/parse-string (str/split-lines body)))
    :check-more    (edn/read-string (get headers "x-arango-replication-checkmore"))
    :last-included (edn/read-string (get headers "x-arango-replication-lastincluded"))})
 

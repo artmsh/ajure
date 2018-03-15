@@ -1,4 +1,4 @@
-(defproject ajure "0.1.2"
+(defproject ajure "0.1.2-SNAPSHOT"
   :description "Clojure driver for ArangoDB"
   :url "https://github.com/artmsh/ajure"
   :license {:name "Eclipse Public License"

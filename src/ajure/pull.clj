@@ -1,9 +1,11 @@
 (ns ajure.pull
   (:require [ajure.protocols :refer :all]
             [clojure.spec.alpha :as s]
-            [clj-aql.core :refer :all]
             [clojure.string :as str]
-            [cheshire.core :as json]))
+            [cheshire.core :as json]
+            [cheshire.generate :as json-gen]
+            [clojure.walk :as walk])
+  (:import (com.fasterxml.jackson.core JsonGenerator)))
 
 (s/def ::recursion-limit (s/or :pos-number pos-int? :dots #{"..."}))
 (s/def ::limit-expr (s/cat :op #{"limit" 'limit} :attr-name ::attr-name :amount (s/or :pos-number pos-int? :nil nil?)))
@@ -34,9 +36,6 @@
 ;  (RETURN {id:_id,locationType:_locationType,_location_id:__location_id})
 ; )
 
-(defn get-ns [kw]
-  (first (str/split (subs (str kw) 1) #"/")))
-
 (def counter (atom 0))
 
 (defn gen-arango-var [prefix]
@@ -46,25 +45,26 @@
 
 (defn build-reverse-lookup [kw la return-only-id? doc-var]
   (let [[_ limit-amount] (if (nil? la) [nil nil] la)
-        nsp (get-ns kw)
+        nsp (namespace kw)
         attr (name kw)
-        header (list 'FOR ['o] :IN nsp)
-        filter (list 'FILTER (str "o." (subs attr 1)) '== (str doc-var ".id"))
-        limit (when-not (nil? limit-amount) (list 'LIMIT limit-amount))
-        return (list 'RETURN (if return-only-id? (symbol "o.id") (symbol "o")))]
+        header (str "FOR o in " nsp "\n")
+        filter (str "FILTER o." (subs attr 1) " == " doc-var ".id\n")
+        limit (when-not (nil? limit-amount) (str "LIMIT " limit-amount "\n"))
+        return (str "RETURN " (if return-only-id? "o.id" "o") "\n")]
     (cond-> header
-            filter (concat [filter])
-            limit (concat [limit])
-            return (concat [return]))))
+            filter (str filter)
+            limit (str limit)
+            return (str return))))
 
 (defn kw->bind [kw] (symbol (gen-arango-var (str "$z" (name kw)))))
 
 (defn build-lookup [kw la doc-var]
-  (let [[_ limit-amount] (if (nil? la) [nil nil] la)]
-    (list 'LET [(kw->bind kw)
-                (if (reverse-lookup-attr? kw)
-                  (build-reverse-lookup kw la true doc-var)
-                  (str doc-var "." (name kw)))])))
+  (let [[_ limit-amount] (if (nil? la) [nil nil] la)
+        b (kw->bind kw)]
+    {:q (str "LET " b " = " (if (reverse-lookup-attr? kw)
+                              (str "(" (build-reverse-lookup kw la true doc-var) ")")
+                              (str doc-var "." (name kw))))
+     :bind b}))
 
 (declare pattern->aql)
 
@@ -77,13 +77,15 @@
                                 :attr-name (second key)
                                 :limit-expr (get-in key [1 :attr-name]))
                            limit-amount (when (= (first key) :limit-expr) (get-in key [1 :amount]))
-                           nsp (get-ns kw)]
+                           nsp (namespace kw)]
                        (case (first val)
                          :pattern
-                         (list 'LET [(kw->bind kw)
-                                     (if (reverse-lookup-attr? kw)
-                                       (pattern->aql (second val) (build-reverse-lookup kw limit-amount false doc-var))
-                                       (pattern->aql (second val) (str doc-var "." (name kw))))])
+                         (let [b (kw->bind kw)]
+                           {:q (str "LET " b " = (" (if (reverse-lookup-attr? kw)
+                                                      (pattern->aql (second val) (build-reverse-lookup kw limit-amount false doc-var))
+                                                      (pattern->aql (second val) (str doc-var "." (name kw))))
+                                    ")")
+                            :bind b})
                          :recursion-limit (build-lookup kw limit-amount doc-var))))
                    val)
     :attr-expr (vector
@@ -108,59 +110,54 @@
       (recur (subs ss 0 (dec (count ss))))
       ss)))
 
+(defrecord UnquotedString [s])
+(json-gen/add-encoder UnquotedString
+                      (fn [c ^JsonGenerator jsonGenerator]
+                        (.writeRawValue jsonGenerator (str (:s c)))))
+
 (defn find-binding [kw bind-names]
-  (first (filter #(= (name kw) (remove-last-digits (subs (str %) 2))) bind-names)))
+  (->UnquotedString
+   (first (filter #(= (name kw) (remove-last-digits (subs (str %) 2))) bind-names))))
 
 ; * : (RETURN (MERGE_RECURSIVE document {id:_id, locationType:_locationType}))
-(defn build-return-expr [tree doc-var bindings]
+(defn build-return-expr [tree doc-var bind-names]
   (let [attr-names (mapcat get-attr-names tree)
-        bind-names (map (comp first second) bindings)
-        _ (prn "bind names: ")
-        _ (clojure.pprint/pprint bind-names)
-        returned-map (apply hash-map (mapcat #(vector (str "\"" (subs (str %) 1) "\"") (find-binding % bind-names)) attr-names))
+        returned-map (apply hash-map (mapcat #(vector (subs (str %) 1) (find-binding % bind-names)) attr-names))
         wildcard? (some #{'*} attr-names)]
     (if wildcard?
-      (list 'MERGE_RECURSIVE doc-var returned-map)
-      returned-map)))
+      (str "MERGE_RECURSIVE(" doc-var ", " (json/generate-string returned-map) ")")
+      (json/generate-string returned-map))))
 
 (defn pattern->aql [tree handles]
   (let [doc-var (gen-arango-var "document")
-        header (list 'FOR [(symbol doc-var)] :IN handles)
+        header (str "FOR " doc-var " in " handles "\n")
         body (mapcat #(attr-spec->aql % doc-var) tree)]
+
     (-> header
-        (concat body)
-        (concat [(list 'RETURN (build-return-expr tree doc-var body))]))))
+        (str (str/join "\n "(map :q body)) "\n")
+        (str "RETURN " (build-return-expr tree doc-var (map :bind body)) "\n"))))
 
 (defn build-query [tree handles]
   (let [str-handles (json/generate-string handles)
-        aql (pattern->aql tree (list 'DOCUMENT (symbol str-handles)))
-        _ (clojure.pprint/pprint aql)
-        exp (macroexpand aql)
-        fn (:query exp)
-        q (eval fn)
-        _ (clojure.pprint/pprint q)]
-    {:query q :args (:args exp)}))
+        aql (pattern->aql tree (str "DOCUMENT(" str-handles ")"))]
+    {:query aql :args {}}))
 
 (defrecord ArangodbPullApi [api]
   IPull
   (pull [this spec entity-ident]
     (let [pm (pull-many this spec [entity-ident])
-          ;_ (clojure.pprint/pprint pm)
-          [type val] pm]
-      (case type
-        :success {:success (first val)}
-        :error {:error val})))
+          {:keys [error success]} pm]
+      (if success
+        {:success (first success)}
+        {:error error})))
   (pull-many [this spec entity-idents]
     (let [eid-grouped (group-by first entity-idents)
           conformed-spec (s/conform ::pattern spec)]
       (reduce (fn [res [db entity-ids]]
-                (case (first res)
-                  :success (let [cursor (create-cursor api db (build-query conformed-spec (map second entity-ids)) {})
-                                 type (first (keys cursor))
-                                 val (get cursor type)]
-                             (case type
-                               :success [:success (concat (second res) (clojure.walk/keywordize-keys val))]
-                               :error [:error val]))
-                  :error res))
-        [:success []]
+                ; TODO hasMore eager loading
+                (let [{:keys [error success]} (create-cursor api db (build-query conformed-spec (map second entity-ids)) {})]
+                  (if success
+                    (update res :success concat (walk/keywordize-keys (get success "result")))
+                    (reduced {:error error}))))
+        {}
         eid-grouped))))

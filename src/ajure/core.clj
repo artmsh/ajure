@@ -90,10 +90,10 @@
          {200 body-json-success
           404 (not-found (str "Document '" handle "' not found"))}
          {:headers
-         (case strategy
-           :if-none-match {"If-None-Match" rev}
-           :if-match {"If-Match" rev}
-           {})}))
+          (case strategy
+            :if-none-match {"If-None-Match" rev}
+            :if-match {"If-Match" rev}
+            {})}))
   (exist-document? [this db handle]
     (req (reqs/exist-document? handle) url db [db handle]))
   (exist-document? [this db handle rev strategy]
@@ -102,10 +102,10 @@
          {200 {:success true}
           404 {:success false}}
          {:headers
-         (case strategy
-           :if-none-match {"If-None-Match" rev}
-           :if-match {"If-Match" rev}
-           {})}))
+          (case strategy
+            :if-none-match {"If-None-Match" rev}
+            :if-match {"If-Match" rev}
+            {})}))
   (create-document [this db coll-name document create-doc-options]
     (req #'create-document [db coll-name document create-doc-options] map? :post url (str "/_db/" db "/_api/document/" coll-name)
          {201 body-json-success
@@ -133,7 +133,7 @@
           400 body-json-error
           404 body-json-error
           409 body-json-error
-          500 (server-error )}
+          500 (server-error)}
          {:query-params import-docs-options
           :body (json/generate-string docs)}))
   (get-replication-dump [this db collection replication-dump-options]

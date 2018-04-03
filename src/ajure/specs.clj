@@ -74,9 +74,9 @@
 (s/def ::reqs (s/coll-of record?))
 (s/def ::keys (s/coll-of string?))
 
-(s/def ::skip pos-int?)
+(s/def ::skip nat-int?)
 (s/def ::limit pos-int?)
-(s/def ::get-by-example-options (s/keys :opt-un [::skip ::limit]))
+(s/def ::get-by-example-options (s/keys :opt-un [::skip ::limit ::batchSize]))
 
 (s/def ::cursor-id string?)
 
@@ -88,3 +88,7 @@
 (s/def ::ticks boolean?)
 (s/def ::flush boolean?)
 (s/def ::replication-dump-options (s/keys :opt-un [::from ::to ::chunkSize ::includeSystem ::failOnUnknown ::ticks ::flush]))
+(s/def ::document-keys-type #{:id :key :path})
+(s/def ::update-doc-options (s/merge
+                              ::update-docs-options
+                              (s/keys :opt-un [::silent])))

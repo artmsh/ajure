@@ -8,7 +8,8 @@
   (remove-database [this db])
   (create-collection [this db create-coll-options])
   (get-collection [this db coll-name])
-  (get-collection-properties [this db coll-name])
+  (get-collection-properties [this db collection])
+  (get-collection-count [this db collection])
   (get-collections [this db])
   (remove-collection [this db coll-name delete-coll-options])
   (get-document [this db handle] [this db handle rev strategy])
@@ -16,7 +17,7 @@
   (create-document [this db coll-name doc-or-docs create-doc-options])
   (replace-document [this db handle document replace-doc-options] [this db handle document rev replace-doc-options])
   ;(replace-documents [this db collection documents options])
-  ;(update-document [this db handle document options] [this db handle document rev options])
+  (update-document [this db handle document update-doc-options] [this db handle document rev update-doc-options])
   (update-documents [this db collection docs update-docs-options])
   (remove-document [this db handle remove-doc-options] [this db handle rev remove-doc-options])
   ;(remove-documents [this db collection array options])
@@ -28,12 +29,14 @@
   (create-cursor [this db query+args cursor-params])
   (batch [this db reqs])
   (get-api-version [this])
-  (get-next-cursor-batch [this cursor-id]))
+  (get-next-cursor-batch [this db cursor-id]))
 
 (defprotocol IArangodbSimpleApi
-  ;(get-all-document-keys [this db collection] [this db collection type])
+  (get-all-documents [this db collection] [this db collection skip limit])
+  (get-all-document-keys [this db collection] [this db collection document-keys-type])
   (get-by-keys [this db collection keys])
-  (get-by-example [this db collection doc batchSize get-by-example-options]))
+  (get-by-example [this db collection doc get-by-example-options])
+  (get-first-example [this db collection doc]))
 
 (defprotocol IPull
   (pull [this spec entity-ident])

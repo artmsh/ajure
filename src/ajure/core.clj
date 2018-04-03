@@ -70,11 +70,13 @@
     (req #'get-collection [db coll-name] map? :get url (str "/_db/" db "/_api/collection/" coll-name)
          {200 body-json-success
           404 (not-found (str "Collection '" coll-name "' is unknown"))}))
-  (get-collection-properties [this db coll-name]
-    (req #'get-collection-properties [db coll-name] map? :get url (str "/_db/" db "/_api/collection/" coll-name "/properties")
+  (get-collection-properties [this db collection]
+    (req #'get-collection-properties [db collection] map? :get url (str "/_db/" db "/_api/collection/" collection "/properties")
          {200 body-json-success
-          404 (not-found (str "Collection '" coll-name "' is unknown"))
+          404 (not-found (str "Collection '" collection "' is unknown"))
           400 (bad-request "Collection name is missing")}))
+  (get-collection-count [this db collection]
+    (req (reqs/get-collection-count collection) url db [db collection]))
   (get-collections [this db]
     (req #'get-collections [db] map? :get url (str "/_db/" db "/_api/collection")))
   (remove-collection [this db coll-name delete-coll-options]
@@ -145,17 +147,12 @@
          {:body (json/generate-string
                   (merge cursor-params {:query (:query query+args) :bindVars (:args query+args)}))}))
   (batch [this db reqs]
-    (let [mp (map-indexed #(hash-map :name (str "req" %1)
-                                     :content (as-http-content %2)
-                                     :mime-type "application/x-arango-batchpart")
-                          reqs)]
-      ;(prn "mp" mp)
-      (req #'batch [db reqs] map? :post url (str "/_db/" db "/_api/batch")
-           {200 (partial batch-parse-result reqs)}
-           {:multipart (map-indexed #(hash-map :name (str "req" %1)
-                                               :content (as-http-content %2)
-                                               :mime-type "application/x-arango-batchpart")
-                                    reqs)})))
+    (req #'batch [db reqs] map? :post url (str "/_db/" db "/_api/batch")
+         {200 (partial batch-parse-result reqs)}
+         {:multipart (map-indexed #(hash-map :name (str "req" %1)
+                                             :content (as-http-content %2)
+                                             :mime-type "application/x-arango-batchpart")
+                                  reqs)}))
   (get-api-version [this] (req (reqs/get-api-version) url nil []))
   (update-documents [this db collection documents update-docs-options]
     (req (reqs/update-documents collection documents) url db [db collection documents update-docs-options]))
@@ -163,10 +160,24 @@
     (req (reqs/replace-document handle document replace-doc-options) url db [db handle document replace-doc-options]))
   (replace-document [this db handle document rev replace-doc-options]
     (req (reqs/replace-document handle document rev replace-doc-options) url db [db handle document rev replace-doc-options]))
-  (get-next-cursor-batch [this cursor-id]
-    (req (reqs/get-next-cursor-batch cursor-id) url nil [cursor-id]))
+  (update-document [this db handle document update-doc-options]
+    (req (reqs/update-document handle document update-doc-options) url db [db handle document update-doc-options]))
+  (update-document [this db handle document rev update-doc-options]
+    (req (reqs/update-document handle document rev update-doc-options) url db [db handle document rev update-doc-options]))
+  (get-next-cursor-batch [this db cursor-id]
+    (req (reqs/get-next-cursor-batch cursor-id) url db [db cursor-id]))
   IArangodbSimpleApi
+  (get-all-documents [this db collection]
+    (req (reqs/get-all-documents collection) url db [db collection]))
+  (get-all-documents [this db collection skip limit]
+    (req (reqs/get-all-documents collection skip limit) url db [db collection skip limit]))
+  (get-all-document-keys [this db collection]
+    (req (reqs/get-all-document-keys collection) url db [db collection]))
+  (get-all-document-keys [this db collection document-keys-type]
+    (req (reqs/get-all-document-keys collection document-keys-type) url db [db collection document-keys-type]))
   (get-by-keys [this db collection keys]
     (req (reqs/get-by-keys collection keys) url db [db collection keys]))
-  (get-by-example [this db collection doc batchSize get-by-example-options]
-    (req (reqs/get-by-example collection doc batchSize get-by-example-options) url db [collection doc batchSize get-by-example-options])))
+  (get-by-example [this db collection doc get-by-example-options]
+    (req (reqs/get-by-example collection doc get-by-example-options) url db [db collection doc get-by-example-options]))
+  (get-first-example [this db collection doc]
+    (req (reqs/get-first-example collection doc) url db [db collection doc])))

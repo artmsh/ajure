@@ -25,6 +25,7 @@
   (import-documents [this db docs import-docs-options])
   ;(get-replication-inventory [this db options])
   (get-replication-dump [this db collection replication-dump-options])
+  (get-collection-revision [this db collection])
 
   (create-cursor [this db query+args cursor-params])
   (batch [this db reqs])

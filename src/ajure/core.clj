@@ -154,6 +154,8 @@
                                              :mime-type "application/x-arango-batchpart")
                                   reqs)}))
   (get-api-version [this] (req (reqs/get-api-version) url nil []))
+  (get-collection-revision [this db collection]
+    (req (reqs/get-collection-revision collection) url db [db collection]))
   (update-documents [this db collection documents update-docs-options]
     (req (reqs/update-documents collection documents) url db [db collection documents update-docs-options]))
   (replace-document [this db handle document replace-doc-options]

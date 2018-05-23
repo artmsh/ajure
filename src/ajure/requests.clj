@@ -172,3 +172,10 @@
               405 body-json-error
               500 body-json-error}
              {:query-params (merge {:collection collection} replication-dump-options)}))
+
+(defn get-collection-revision [collection]
+  (->Request :get (format "/_api/collection/%s/revision" collection) #'proto/get-collection-revision map?
+             {200 body-json-success
+              400 body-json-error
+              404 body-json-error}
+             {}))

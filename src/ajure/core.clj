@@ -108,14 +108,14 @@
             :if-none-match {"If-None-Match" rev}
             :if-match {"If-Match" rev}
             {})}))
-  (create-document [this db coll-name document create-doc-options]
-    (req #'create-document [db coll-name document create-doc-options] map? :post url (str "/_db/" db "/_api/document/" coll-name)
+  (create-document [this db coll-name doc-or-docs create-doc-options]
+    (req #'create-document [db coll-name doc-or-docs create-doc-options] map? :post url (str "/_db/" db "/_api/document/" coll-name)
          {201 body-json-success
           202 body-json-success
           404 body-json-error
           400 body-json-error
           409 body-json-error}
-         {:body (json/generate-string document)
+         {:body (json/generate-string doc-or-docs)
           :query-params create-doc-options}))
   (remove-document [this db handle remove-doc-options]
     (req #'remove-document [db handle remove-doc-options] map? :delete url (str "/_db/" db "/_api/document/" handle)
@@ -171,6 +171,8 @@
   IArangodbSimpleApi
   (get-all-documents [this db collection]
     (req (reqs/get-all-documents collection) url db [db collection]))
+  (get-all-documents [this db collection batch-size]
+    (req (reqs/get-all-documents collection batch-size) url db [db collection batch-size]))
   (get-all-documents [this db collection skip limit]
     (req (reqs/get-all-documents collection skip limit) url db [db collection skip limit]))
   (get-all-document-keys [this db collection]

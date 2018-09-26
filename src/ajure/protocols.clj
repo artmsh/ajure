@@ -33,7 +33,7 @@
   (get-next-cursor-batch [this db cursor-id]))
 
 (defprotocol IArangodbSimpleApi
-  (get-all-documents [this db collection] [this db collection skip limit])
+  (get-all-documents [this db collection] [this db collection batch-size] [this db collection skip limit])
   (get-all-document-keys [this db collection] [this db collection document-keys-type])
   (get-by-keys [this db collection keys])
   (get-by-example [this db collection doc get-by-example-options])

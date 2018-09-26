@@ -66,6 +66,7 @@
 (s/def ::query+args (s/keys :req-un [::query ::args]))
 (s/def ::count int?)
 (s/def ::batchSize pos-int?)
+(s/def ::batch-size pos-int?)
 (s/def ::cache boolean?)
 (s/def ::memoryLimit int?)
 (s/def ::ttl int?)

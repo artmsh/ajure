@@ -137,6 +137,13 @@
                400 body-json-error
                404 body-json-error}
               {:body (json/generate-string {:collection collection})}))
+  ([collection batch-size]
+   (->Request :put "/_api/simple/all" #'proto/get-all-documents map?
+              {201 body-json-success
+               400 body-json-error
+               404 body-json-error}
+              {:body (json/generate-string {:collection collection
+                                            :batchSize batch-size})}))
   ([collection skip limit]
    (->Request :put "/_api/simple/all" #'proto/get-all-documents map?
               {201 body-json-success

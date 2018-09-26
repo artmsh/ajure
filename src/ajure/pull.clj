@@ -132,7 +132,9 @@
   (let [doc-var (gen-arango-var "document")
         header (str "FOR " doc-var " in " handles "\n")
         body (mapcat #(attr-spec->aql % doc-var) tree)]
-
+        ;_ (prn (-> header
+        ;           (str (str/join "\n "(map :q body)) "\n")
+        ;           (str "RETURN " (build-return-expr tree doc-var (map :bind body)) "\n")))]
     (-> header
         (str (str/join "\n "(map :q body)) "\n")
         (str "RETURN " (build-return-expr tree doc-var (map :bind body)) "\n"))))
@@ -157,7 +159,7 @@
                 ; TODO hasMore eager loading
                 (let [{:keys [error success]} (create-cursor api db (build-query conformed-spec (map second entity-ids)) {})]
                   (if success
-                    (update res :success concat (walk/keywordize-keys (get success "result")))
+                    (update res :success concat (walk/keywordize-keys (:result success)))
                     (reduced {:error error}))))
         {}
         eid-grouped))))

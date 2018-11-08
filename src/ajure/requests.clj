@@ -186,3 +186,10 @@
               400 body-json-error
               404 body-json-error}
              {}))
+
+(defn get-replication-logger-state []
+  (->Request :get "/_api/replication/logger-state" #'proto/get-replication-logger-state map?
+             {200 body-json-success
+              400 body-json-error
+              404 body-json-error}
+             {}))

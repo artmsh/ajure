@@ -26,6 +26,7 @@
   ;(get-replication-inventory [this db options])
   (get-replication-dump [this db collection replication-dump-options])
   (get-collection-revision [this db collection])
+  (get-replication-logger-state [this])
 
   (create-cursor [this db query+args cursor-params])
   (batch [this db reqs])

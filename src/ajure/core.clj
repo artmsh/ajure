@@ -23,15 +23,20 @@
          arglist (first (filter #(= (count %) (count args)) arglists))
          invalid-inputs (remove spec-valid? (zipmap arglist args))]
      (if (empty? invalid-inputs)
-       (let [params (cond-> {:method method :url (str url call) :throw-exceptions? false}
-                            (not (nil? _params)) (merge _params))
-             rq @(http/request params)
-             ;_ (clojure.pprint/pprint rq)
-             ;_ (clojure.pprint/pprint (-> rq :body bs/to-string))
-             [code body] (get-code-and-body-from-request rq)
-             ;_ (prn [code body])
-             handler (get errors code)]
-         (handle-response handler code body (:headers rq) output-spec))
+       (try
+         (let [params (cond-> {:method method :url (str url call) :throw-exceptions? false}
+                              (not (nil? _params)) (merge _params))
+               rq @(http/request params)
+               ;_ (clojure.pprint/pprint rq)
+               ;_ (clojure.pprint/pprint (-> rq :body bs/to-string))
+               [code body] (get-code-and-body-from-request rq)
+               ;_ (prn [code body])
+               handler (get errors code)]
+           (handle-response handler code body (:headers rq) output-spec))
+         (catch Exception e
+           {:error {:type :exception
+                    :message (.getMessage e)
+                    :exception (.getClass e)}}))
        {:error {:type :malformed-input
                 :message (spec-explain (first invalid-inputs))}}))))
 

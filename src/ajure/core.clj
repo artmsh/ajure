@@ -1,13 +1,12 @@
 (ns ajure.core
-  (:require [aleph.http :as http]
-            [ajure.specs]
+  (:require [ajure.specs]
             [clojure.spec.alpha :as s]
             [expound.alpha :as expound]
             [ajure.protocols :refer :all]
             [ajure.handlers :refer :all]
             [ajure.helpers :refer :all]
             [cheshire.core :as json]
-            [byte-streams :as bs]
+            [clj-http.client :as http]
             [clojure.string :as str]
             [ajure.requests :as reqs]))
 
@@ -26,7 +25,7 @@
        (try
          (let [params (cond-> {:method method :url (str url call) :throw-exceptions? false}
                               (not (nil? _params)) (merge _params))
-               rq @(http/request params)
+               rq (http/request params)
                ;_ (clojure.pprint/pprint rq)
                ;_ (clojure.pprint/pprint (-> rq :body bs/to-string))
                [code body] (get-code-and-body-from-request rq)

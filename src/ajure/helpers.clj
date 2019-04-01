@@ -1,11 +1,10 @@
 (ns ajure.helpers
   (:require [clojure.spec.alpha :as s]
-            [byte-streams :as bs]
             [expound.alpha :as expound]))
 
 (defn get-code-and-body-from-request [rq]
   (let [http-status-code (:status rq)
-        body-str (-> rq :body bs/to-string)]
+        body-str (-> rq :body)]
     [http-status-code body-str]))
 
 (defn spec-valid? [[key val]]

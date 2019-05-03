@@ -8,7 +8,11 @@
             [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.string :as str]
-            [ajure.requests :as reqs]))
+            [ajure.requests :as reqs]
+            [clojure.java.io :as jio])
+  (:import (java.nio.charset Charset)
+           (org.apache.http.entity.mime.content StringBody)
+           (org.apache.http.entity ContentType)))
 
 (defn req
   ([{:keys [http-method url protocol-method output-spec responses http-params]} endpoint db args]
@@ -49,6 +53,9 @@
             (not (nil? headers)) (str (str/join "\n" (map #(str (key %) ": " (val %)) headers)) "\n")
             true (str method " " url " HTTP/1.1")
             (not (nil? body)) (str "\n" body "\n"))))
+
+(defn as-multipart-string-body [^String text ^String mime-type]
+  (StringBody. text (ContentType/create mime-type)))
 
 (defrecord ArangodbApi [url]
   IArangodbApi
@@ -154,8 +161,10 @@
     (req #'batch [db reqs] map? :post url (str "/_db/" db "/_api/batch")
          {200 (partial batch-parse-result reqs)}
          {:multipart (map-indexed #(hash-map :name (str "req" %1)
-                                             :content (as-http-content %2)
-                                             :mime-type "application/x-arango-batchpart")
+                                             :content
+                                             (as-multipart-string-body
+                                               (as-http-content %2)
+                                               "application/x-arango-batchpart"))
                                   reqs)}))
   (get-api-version [this] (req (reqs/get-api-version) url nil []))
   (get-collection-revision [this db collection]

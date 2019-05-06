@@ -9,7 +9,7 @@
   {:success (get (json/parse-string body) "result")})
 
 (defn get-boundary [content-type]
-  (second (first (re-seq #"boundary=([0-9a-z]+)" content-type))))
+  (second (first (re-seq #"boundary=([0-9a-z_A-Z]+)" content-type))))
 
 (defn handle-response [handler status body headers output-spec]
   (cond
@@ -34,8 +34,9 @@
 
 (defn batch-parse-result [reqs _ body headers]
   (let [boundary (str "--" (get-boundary (get headers "content-type")))
+        boundary-pattern (re-pattern boundary)
         splitted (->>
-                   (str/split body (re-pattern boundary))
+                   (str/split body boundary-pattern)
                    (drop-last)
                    (drop 1)
                    (map #(str/split % #"\r\n")))

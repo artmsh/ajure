@@ -9,7 +9,7 @@
   {:success (get (json/parse-string body) "result")})
 
 (defn get-boundary [content-type]
-  (second (first (re-seq #"boundary=([0-9a-z_A-Z]+)" content-type))))
+  (second (first (re-seq #"boundary=([0-9a-zA-Z\'()\/\+\,\-_]+)" content-type))))
 
 (defn handle-response [handler status body headers output-spec]
   (cond

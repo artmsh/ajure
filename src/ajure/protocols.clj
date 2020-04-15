@@ -12,6 +12,7 @@
   (get-collection-count [this db collection])
   (get-collections [this db])
   (remove-collection [this db coll-name delete-coll-options])
+  (create-index [this db coll-name create-index-options])
   (get-document [this db handle] [this db handle rev strategy])
   (exist-document? [this db handle] [this db handle rev strategy])
   (create-document [this db coll-name doc-or-docs create-doc-options])

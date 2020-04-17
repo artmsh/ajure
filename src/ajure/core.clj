@@ -95,6 +95,12 @@
          {200 body-json-success
           400 (bad-request "Collection name is missing")
           404 (not-found (str "Collection '" coll-name "' is unknown"))}))
+  (create-index [this db coll-name create-index-options]
+    (req #'create-index [db create-index-options] map? :post url (str "/_db/" db "/_api/index")
+         {200 body-json-success
+          201 body-json-success}
+         {:body (json/generate-string create-index-options)
+          :query-params {:collection (name coll-name)}}))
   (get-document [this db handle]
     (req (reqs/get-document handle) url db [db handle]))
   (get-document [this db handle rev strategy]

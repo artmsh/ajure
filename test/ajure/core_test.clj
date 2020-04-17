@@ -34,6 +34,12 @@
           gc-testdb (get-collections api "testdb")
           cd-0 (create-document api "testdb" "test_collection" [{:_key "0" :a 1 :b 2}] {})
           gc-test-coll (get-collection api "testdb" "test_collection")
+          ci-test-index (-> (create-index api "testdb" "test_collection" {:type "hash"
+                                                                          :fields ["a"]
+                                                                          :unique false
+                                                                          :sparse false})
+                            :success
+                            (dissoc :id))
           ed-0 (exist-document? api "testdb" "test_collection/0")
           ed-1_ (exist-document? api "testdb" "test_collection/1")
           id-1-0 (import-documents api "testdb" [{:_key "1" :a 2 :c -1} {:_key "0" :a 3}]
@@ -89,7 +95,18 @@
             {:id (get-in cc-test-coll [:success :id]) :error false}
             rc-test-coll))
       (is (= true (:success rd-testdb)))
-      (is (= dbs-before dbs-after))))
+      (is (= dbs-before dbs-after))
+      (is (= {:unique false
+              :selectivityEstimate 1
+              :isNewlyCreated true
+              :fields ["a"]
+              :type "hash"
+              :code 201
+              :deduplicate true
+              :error false
+              :sparse false}
+             ci-test-index)
+          "Index creation functions as expected")))
 
   (testing "AQL Queries"
     (prn (create-cursor api "tom"
